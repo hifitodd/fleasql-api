@@ -12,7 +12,7 @@ var connection = mysql.createConnection({
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 
-// LOL testinga DUE BITCH asdf
+// LOL testinga DUE BITCH asdf FOOL
 app.get('/book', function(req, res) {
     var data = {
         error: 1,
