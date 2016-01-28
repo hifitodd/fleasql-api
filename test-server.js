@@ -7,51 +7,23 @@ var connection = mysql.createConnection({
     host: 'localhost',
     user: 'root',
     password: 'Audiofl3a!!',
-    database: 'audioflea_bluehost_thinkpad_7-13-15'
+    database: 'books'
 });
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
-
-// set header for CORS
-app.use(function (req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-    next();
-});
 
 // LOL testinga DUE BITCH asdf FOOL BLOW BEYOTCH
 
 /**
  * GET Example
  */
-app.get('/userinfo', function(req, res) {
+app.get('/book', function(req, res) {
     var data = {
         error: 1,
-        statusmsg: '',
-        userFields: []
+        Books: ''
     };
 
-    var userId = req.query.userid;
-    if(userId) {
-        connection.query("SELECT * from flea_users where ID=?", userId, function(err, rows, fields) {
-            if(rows.length != 0) {
-                data.error = 0;
-                data.userFields = rows[0];
-                data.statusmsg = "Cool, we got the user's info.";
-                res.json(data);
-            }
-            else {
-                data.statusmsg = "Couldn't find user in the DB";
-                res.json(data);
-            }
-        });
-    }
-    else {
-        data.statusmsg = "Please provided a userID in the request string.";
-        res.json(data);
-    }
-
-    /*connection.query("select * from book", function(err, rows, fields) {
+    connection.query("select * from book", function(err, rows, fields) {
         if(rows.length != 0) {
             data.error = 0;
             data.Books = rows;
@@ -60,7 +32,7 @@ app.get('/userinfo', function(req, res) {
             data.Books = 'No books found.';
             res.json(data);
         }
-    })*/
+    })
 });
 
 /**
