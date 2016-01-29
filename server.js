@@ -7,7 +7,7 @@ var connection = mysql.createConnection({
     host: 'localhost',
     user: 'root',
     password: 'Audiofl3a!!',
-    database: 'audioflea_bluehost_thinkpad_7-13-15'
+    database: 'audiofle_audioflea_dev'
 });
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
@@ -34,14 +34,21 @@ app.get('/userinfo', function(req, res) {
     var userId = req.query.userid;
     if(userId) {
         connection.query("SELECT * from flea_users where ID=?", userId, function(err, rows, fields) {
-            if(rows.length != 0) {
-                data.error = 0;
-                data.userFields = rows[0];
-                data.statusmsg = "Cool, we got the user's info.";
-                res.json(data);
+            //if(rows && rows.length != 0) {
+            if(rows) {
+                if(rows.length != 0) {
+                    data.error = 0;
+                    data.userFields = rows[0];
+                    data.statusmsg = "Cool, we got the user's info.";
+                    res.json(data);
+                }
+                else {
+                    data.statusmsg = "Couldn't find user in the DB";
+                    res.json(data);
+                }
             }
             else {
-                data.statusmsg = "Couldn't find user in the DB";
+                data.statusmsg = "rows variable is null";
                 res.json(data);
             }
         });
