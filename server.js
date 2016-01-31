@@ -1,5 +1,5 @@
 var app = require('express')();
-var http = require('http');
+//var http = require('http');
 var mysql = require('mysql');
 var bodyParser = require("body-parser");
 
@@ -12,6 +12,7 @@ var connection = mysql.createConnection({
 });
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
+app.set('trust proxy', 'loopback');
 
 // set header for CORS
 app.use(function (req, res, next) {
@@ -29,7 +30,7 @@ app.use(function (req, res, next) {
  * GET - Get user Details
  * @param userid the WP id of the user passed in on the query string like this: /userinfo?userid=0
  */
-app.get('/userinfo', function(req, res) {
+app.get('/userinfo', function(req, res, next) {
     var data = {
         error: 1,
         statusmsg: '',
@@ -43,7 +44,9 @@ app.get('/userinfo', function(req, res) {
         connection.query("SELECT * from flea_users where ID=?", userId, function(err, rows, fields) {
 
             // If there is an error, bail out and handle it safely
-            //if(err) { return next(err); }
+            if(err) {
+                return next(err);
+            }
 
             if(rows) {
                 if(rows.length != 0) {
@@ -65,10 +68,15 @@ app.get('/userinfo', function(req, res) {
 
         // OK, now let's get the user's meta fields from the 'usermeta' table
         connection.query("SELECT * from flea_usermeta WHERE user_id=?", userId, function(err, rows, fields) {
+            if(err) {
+                return next(err);
+            }
             if(rows && rows.length != 0) {
                 // fields to return, build an object of them
                 var returnFields = {};
 
+
+                // todo fix the sql statements so I'm only pulling the fields that I want
                 // list of the fields I want
                 var metaFieldsToReturn = ['author_custom', 'author_description', 'author_title_line', 'avatar_image_field', 'description', 'first_name', 'last_name', 'flea_user_level', 'nickname', 'reg_mail_signup_box'];
                 // iterate over each meta field
@@ -79,6 +87,10 @@ app.get('/userinfo', function(req, res) {
                     }
                     data.statusmsg = "got meta stuff";
                 });
+
+                // to get the avatar image, I should do a query here
+                // need the 'avatar_image_url' meta field, and then check the 'posts' table for that ID to get the
+                // image URL
             }
             else {
                 data.statusmsg = "failed to get meta info about user";
@@ -92,6 +104,229 @@ app.get('/userinfo', function(req, res) {
         res.json(data);
     }
 });
+
+
+/**
+ * GET - Get Billing Details
+ *
+ * Details are TBD based on how I end up doing payment gateway, etc.
+ */
+app.get('/billinginfo', function(req, res, next) {
+    res.send('Billing info brah!');
+});
+
+/**
+ * GET - Get inbox.
+ * Params will dictate what messages to return.  Details TBD
+ * @param {int} userid
+ */
+app.get('/receivedMessages', function(req, res, next) {
+    var data = {
+        statusmsg: '',
+        messages: {}
+    };
+
+    // get userId from query string
+    var userId = req.query.userid;
+    connection.query("SELECT * from flea_auction_pm WHERE user=?", userId, function(err, rows, fields){
+        // function here with the inbox messages
+        if(err) {
+            return next(err);
+        }
+        if(rows && rows.length != 0) {
+            data.statusmsg = 'Sweet, got the PMs from the db!';
+            data.messages = rows;
+            res.json(data);
+        } else if(rows && rows.length == 0) {
+            res.send('you have no messages!');
+        }
+        else {
+            return next(new Error("Got bogus response back from DB when querying flea_auction_pm"));
+        }
+    });
+    //res.send('I think this is an error and private messages were not retrieved most likely.');
+});
+
+/**
+ * GET - Get Sent Messages.
+ * Params will dictate what messages to return.  Details TBD
+ */
+app.get('/sentMessages', function(req, res, next) {
+    // Connect to the DB and make the query to get the messages
+    var data = {
+
+    };
+
+    /**
+     * These are the params, TBD
+     * @type {string}
+     */
+    var mySqlData = '';
+    connection.query('SELECT * from flea_messages WHERE sender=? limt 10 order by message_time', mySqlData, function(){
+        // function here with the sent messages
+    });
+    res.send('Will need to send some messages at some point');
+});
+
+/**
+ * GET - Get My Purchases.
+ * Params will dictate what messages to return.  Details TBD
+ */
+app.get('/myPurchases', function(req, res, next) {
+    // Connect to the DB and make the query to get the messages
+    var data = {
+
+    };
+
+    /**
+     * These are the params, TBD
+     * @type {string}
+     */
+    var mySqlData = '';
+    connection.query('SELECT * from flea_my_purchases WHERE recipient=? limt 10 order by message_time', mySqlData, function(){
+        // function here with the inbox messages
+    });
+    res.send('Will need to send some messages at some point');
+});
+
+/**
+ * GET - Get my Sales.
+ * Params will dictate what messages to return.  Details TBD
+ */
+app.get('/mySales', function(req, res, next) {
+    // Connect to the DB and make the query to get the messages
+    var data = {
+
+    };
+
+    /**
+     * These are the params, TBD
+     * @type {string}
+     */
+    var mySqlData = '';
+    connection.query('SELECT * from flea_my_sales WHERE recipient=? limt 10 order by message_time', mySqlData, function(){
+        // function here with the inbox messages
+    });
+    res.send('Will need to send some messages at some point');
+});
+
+/**
+ * GET - Get my listings.
+ * Params will dictate what messages to return.  Details TBD
+ */
+app.get('/myListings', function(req, res, next) {
+    // Connect to the DB and make the query to get the messages
+    var data = {
+
+    };
+
+    /**
+     * These are the params, TBD
+     * @type {string}
+     */
+    var mySqlData = '';
+    connection.query('SELECT * from flea_my_listings WHERE recipient=? limt 10 order by message_time', mySqlData, function(){
+        // function here with the inbox messages
+    });
+    res.send('Will need to send some messages at some point');
+});
+
+/**
+ * GET - Get my favorites.
+ * Params will dictate what messages to return.  Details TBD
+ */
+app.get('/myFavorites', function(req, res, next) {
+    // Connect to the DB and make the query to get the messages
+    var data = {
+
+    };
+
+    /**
+     * These are the params, TBD
+     * @type {string}
+     */
+    var mySqlData = '';
+    connection.query('SELECT * from flea_my_favorites WHERE recipient=? limt 10 order by message_time', mySqlData, function(){
+        // function here with the inbox messages
+    });
+    res.send('Will need to send some messages at some point');
+});
+
+/**
+ * GET - Get my offers.
+ * Params will dictate what messages to return.  Details TBD
+ */
+app.get('/myOffers', function(req, res, next) {
+    // Connect to the DB and make the query to get the messages
+    var data = {
+
+    };
+
+    /**
+     * These are the params, TBD
+     * @type {string}
+     */
+    var mySqlData = '';
+    connection.query('SELECT * from flea_my_offers WHERE recipient=? limt 10 order by message_time', mySqlData, function(){
+        // function here with the inbox messages
+    });
+    res.send('Will need to send some messages at some point');
+});
+
+
+/**
+ * GET - Get my ReceivedOffers.
+ * Params will dictate what messages to return.  Details TBD
+ */
+app.get('/myReceivedOffers', function(req, res, next) {
+    // Connect to the DB and make the query to get the messages
+    var data = {
+
+    };
+
+    /**
+     * These are the params, TBD
+     * @type {string}
+     */
+    var mySqlData = '';
+    connection.query('SELECT * from flea_received_offers WHERE recipient=? limt 10 order by message_time', mySqlData, function(){
+        // function here with the inbox messages
+    });
+    res.send('Will need to send some messages at some point');
+});
+
+/**
+ * GET - Get my feedback.
+ * Params will dictate what messages to return.  Details TBD
+ */
+app.get('/myFeedback', function(req, res, next) {
+    // Connect to the DB and make the query to get the messages
+    var data = {
+
+    };
+
+    /**
+     * These are the params, TBD
+     * @type {string}
+     */
+    var mySqlData = '';
+    connection.query('SELECT * from flea_my_feedback WHERE recipient=? limt 10 order by message_time', mySqlData, function(){
+        // function here with the inbox messages
+    });
+    res.send('Will need to send some messages at some point');
+});
+
+//app.use(function(err, req, res, next) {
+/*    if (res.headersSent) {
+        return next(err);
+    }*/
+    //console.error('you goofy bastad');
+    //res.status(500).send('something broke!');
+    //res.status(err.status || 500);
+    //res.send('hey');
+
+//});
+
 /*app.use(function(err, req, res) {
     res.status(err.status || 500);
     res.render('error', {
@@ -198,6 +433,16 @@ app.get('/', function (req, res) {
     res.send('Hello world');
 });
 
+/**
+ * My global Error Handling
+ * Prints out name and message of error.
+ */
+app.use(function(err, req, res, next) {
+
+    console.error('Error Name:' + err.name + '\nError message: ' + err.message);
+    res.status(500);
+    res.send('Database Service Layer had a problem.');
+});
 
 
 app.listen(3000, function () {
