@@ -128,7 +128,7 @@ app.get('/receivedMessages', function(req, res, next) {
 
     // get userId from query string
     var userId = req.query.userid;
-    connection.query("SELECT * from flea_auction_pm WHERE user=?", userId, function(err, rows, fields){
+    connection.query("SELECT * from flea_auction_pm WHERE user=? AND show_to_destination=1 ORDER BY datemade DESC", userId, function(err, rows, fields){
         // function here with the inbox messages
         if(err) {
             return next(err);
@@ -438,7 +438,9 @@ app.get('/', function (req, res) {
  * Prints out name and message of error.
  */
 app.use(function(err, req, res, next) {
-
+    if (res.headersSent) {
+        return next(err);
+    }
     console.error('Error Name:' + err.name + '\nError message: ' + err.message);
     res.status(500);
     res.send('Database Service Layer had a problem.');
