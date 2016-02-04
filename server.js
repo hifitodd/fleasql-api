@@ -16,7 +16,7 @@ app.set('trust proxy', 'loopback');
 
 // set header for CORS
 app.use(function (req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Origin", "localhost");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
 });
@@ -141,11 +141,44 @@ app.get('/receivedMessages', function(req, res, next) {
             res.send('you have no messages!');
         }
         else {
-            return next(new Error("Got bogus response back from DB when querying flea_auction_pm"));
+            return next(new Error("Got bogus response back from DB when querying flea_auction_pm for the inbox"));
         }
     });
     //res.send('I think this is an error and private messages were not retrieved most likely.');
 });
+
+/**
+ * GET - get a single private message
+ * Params will dictate what messages to return.  Details TBD
+ * @param {int} userid
+ */
+app.get('/getSingleMessage', function(req, res, next) {
+    var data = {
+        statusmsg: '',
+        message: {}
+    };
+    //var mySqlData = [userid,msgid];
+    // get userId from query string
+    var userId = req.query.userid;
+    var msgId = req.query.msgid;
+    connection.query("SELECT * from flea_auction_pm WHERE user=? AND show_to_destination=1 AND id=? ORDER BY datemade DESC", [userId, msgId], function(err, rows, fields){
+        // function here with the inbox messages
+        if(err) {
+            return next(err);
+        }
+        if(rows && rows.length === 1) {
+            data.statusmsg = 'sweet, got the single message loaded';
+            data.message = rows[0];
+            res.json(data);
+        } else if(rows && rows.length == 0) {
+            res.send("can't find this private message in the db. Either deleted, or user doesn't own it, or an invalid msgid.");
+        }
+        else {
+            return next(new Error("Got bogus response back from DB when querying flea_auction_pm for a single message"));
+        }
+    });
+});
+
 
 /**
  * GET - Get Sent Messages.
