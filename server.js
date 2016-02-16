@@ -10,6 +10,15 @@ var connection = mysql.createConnection({
     password: 'Audiofl3a!!',
     database: 'audioflea_dev'
 });
+
+var pool = mysql.createPool({
+    connectionLimit: 1,
+    host: 'localhost',
+    user: 'root',
+    password: 'Audiofl3a!!',
+    database: 'audioflea_dev'
+});
+
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 app.set('trust proxy', 'loopback');
@@ -372,6 +381,95 @@ app.get('/myFeedback', function(req, res, next) {
  * POST Example
  */
 
+app.post('/submitListing', function(req, res, next) {
+    // So listingData here is an object with all the fields
+    var listingData = req.body;
+
+    // error flag and data variable for books
+    var data = {
+        error: 1,
+        statusmsg: '',
+        highestId: null
+    };
+
+    // test data
+    var postId = 5;
+
+    if(listingData) {
+        pool.getConnection(function(err, poolConnection) {
+            // connected! (unless `err` is set)
+            if(err) {
+                return next(err);
+            }
+
+            // so first step is to get the highest listing ID
+            poolConnection.query("SELECT MAX(ID) AS ID FROM flea_posts", function (err, rows) {
+                if(err) {
+                    next(err);
+                } else {
+                    data.highestId = rows[0].ID;
+
+                    // this is just a test query for now.  here is where I put the DB queries
+                    poolConnection.query("SELECT * FROM flea_posts WHERE ID=?",[data.highestId], function (err, rows) {
+                        if(err) {
+                            next(err);
+                        } else {
+                            data.thisRow = rows[0];
+                        }
+                    });
+                    poolConnection.release();
+                    res.send('blah');
+                }
+            });
+
+   /*         poolConnection.query("INSERT into flea_posts values ('',?)",[postId], function (err, rows, fields) {
+                if(err) {
+                    data.statusmsg = 'error writing to flea_posts';
+                }
+                else {
+                    data.statusmsg = 'wrote to flea_posts successfully';
+                }
+            });
+
+            poolConnection.query("INSERT into flea_postmeta values ('',?)",[postId], function (err, rows, fields) {
+                if(err) {
+                    data.statusmsg = 'error writing to flea_posts';
+                }
+                else {
+                    data.statusmsg = 'wrote to flea_posts successfully';
+                }
+            });
+
+            poolConnection.query("INSERT into flea_term_relationships values ('',?)",[postId], function (err, rows, fields) {
+                if(err) {
+                    data.statusmsg = 'error writing to flea_posts';
+                }
+                else {
+                    data.statusmsg = 'wrote to flea_posts successfully';
+                }
+            });*/
+
+        });
+
+       /* connection.query("insert into book values('',?,?,?)",[Bookname, Authorname, Price], function (err, rows, fields) {
+            if(err) {
+                data.Books = "Error adding data";
+            }
+            else {
+                data.error = 0;
+                data.Books = "Book added successfully.";
+            }
+            res.json(data);
+        });*/
+        //res.json(listingData);
+    }
+    else {
+        /*data.Books = 'Please provide all required data!  Bookname, Authorname and Price.';
+        res.json(data);*/
+        res.send('did not get listing data!');
+    }
+});
+
 app.post('/bookpost', function(req, res) {
     // setup vars first
 
@@ -481,5 +579,5 @@ app.use(function(err, req, res, next) {
 
 
 app.listen(3000, function () {
-    console.log('Flea MySql Web Service layer is up on port 3000.   ');
+    console.log('Flea MySql Web Service layer is up on port 3000.');
 });
