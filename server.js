@@ -1,4 +1,6 @@
-var app = require('express')();
+var express = require('express');
+var app = express();
+var router = express.Router();
 //var http = require('http');
 var mysql = require('mysql');
 var bodyParser = require("body-parser");
@@ -10,6 +12,10 @@ var connection = mysql.createConnection({
     password: 'Audiofl3a!!',
     database: 'audioflea_dev'
 });
+
+// load in the submitListing router
+var submitListing = require('./submitListing');
+
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 app.set('trust proxy', 'loopback');
@@ -20,11 +26,8 @@ app.use(function (req, res, next) {
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
 });
-/**
- *
- * Error handler
- */
 
+app.use('/submitListing', submitListing);
 
 /**
  * GET - Get user Details
