@@ -1,6 +1,16 @@
 var express = require('express');
 var router = express.Router();
+var mysql = require('mysql');
+var _ = require('lodash');
+var bodyParser = require("body-parser");
 
+var pool = mysql.createPool({
+    connectionLimit: 1,
+    host: 'localhost',
+    user: 'root',
+    password: 'Audiofl3a!!',
+    database: 'audioflea_dev'
+});
 // define the home page route
 /*router.get('/', function(req, res) {
     res.send('Birds home page');
@@ -13,90 +23,133 @@ router.get('/about', function(req, res) {
 router.post('/', function(req, res, next) {
     // So listingData here is an object with all the fields
     var listingData = req.body;
-
-    // error flag and data variable for books
+    var listingTitle = listingData.brand + ' - ' + listingData.model + ' - ' + listingData.subtitle + ' - ' + listingData.userId;
+    var listingName = listingData.brand + '-' + listingData.model + '-' + listingData.userId;
     var data = {
         error: 1,
         statusmsg: '',
-        highestId: null
+        postId: null
     };
-
-    // test data
-    var postId = 5;
 
     if(listingData) {
         pool.getConnection(function(err, poolConnection) {
-            // connected! (unless `err` is set)
             if(err) {
                 return next(err);
             }
+            var currentDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
+            var postToInsert = {
+                post_author: parseInt(listingData.userId),
+                post_title: listingTitle,
+                post_date: currentDate,
+                guid: '/browse/listing/',
+                post_name: listingName,
+                post_status: 'publish',
+                post_content: listingData.description,
+                post_excerpt: listingData.subtitle,
+                post_type: 'listing'
+            };
 
-            // so first step is to get the highest listing ID
-            poolConnection.query("SELECT MAX(ID) AS ID FROM flea_posts", function (err, rows) {
+            var test1;
+            poolConnection.query("INSERT INTO flea_posts SET ?", postToInsert , function (err, rows, fields) {
                 if(err) {
-                    next(err);
-                } else {
-                    data.highestId = rows[0].ID;
-
-                    // this is just a test query for now.  here is where I put the DB queries
-                    poolConnection.query("SELECT * FROM flea_posts WHERE ID=?",[data.highestId], function (err, rows) {
-                        if(err) {
-                            next(err);
-                        } else {
-                            data.thisRow = rows[0];
-                        }
-                    });
+                    data.statusmsg = 'error writing to flea_posts';
+                    console.log('error writing to flea_posts');
                     poolConnection.release();
-                    res.send('blah');
+                    res.json(data);
+                } else {
+                    //data.error = 0;
+                    data.statusmsg = 'wrote to flea_posts successfully';
+                    console.log('wrote to flea_posts successfully');
+
+                    data.postId = rows.insertId;
+
+                    var parentValues = [data.postId, listingData.parentCat];
+                    var childValues = [data.postId, listingData.childCat];
+
+                    poolConnection.query("INSERT INTO flea_term_relationships (object_id,term_taxonomy_id) VALUES(?),(?)",
+                        [parentValues, childValues], function (err, rows, fields) {
+                       if(err) {
+                           data.statusmsg = 'error writing to flea_term_relationships';
+                           console.log('error writing to flea_term_relationships');
+                           poolConnection.release();
+                           res.json(data);
+                       } else {
+                            data.statusmsg += ', and relationships';
+                           console.log('wrote to flea_term_relationships successfully');
+
+                           var allMeta = [];
+
+                           // add global meta fields
+                           allMeta.push([data.postId, 'flea_listing_brand', listingData.brand]);
+                           allMeta.push([data.postId, 'flea_model', listingData.model]);
+                           if(listingData.retailPrice) {
+                               allMeta.push([data.postId, 'retail_price', listingData.retailPrice]);
+                           }
+
+                           // now iterate through the category specific meta fields
+                           _.forEach(listingData.catMeta, function (metaProp) {
+                               allMeta.push([data.postId, metaProp.name, metaProp.value ]);
+                           });
+                           //var allMeta = [meta1, meta2];
+                           var metaSql = "INSERT INTO flea_postmeta (post_id, meta_key, meta_value) VALUES ?";
+
+                           poolConnection.query(metaSql, [allMeta], function () {
+                                   if(err) {
+                                       data.statusmsg = 'error writing to flea_meta';
+                                       console.log('error writing to flea_meta');
+                                       poolConnection.release();
+                                       res.json(data);
+                                   } else {
+                                       data.statusmsg += ', and meta';
+                                       data.error = 0;
+                                       console.log('wrote to flea_meta successfully');
+                                       poolConnection.release();
+                                       res.json(data);
+                                   }
+                           });
+
+                       }
+                    });
                 }
             });
+/*                    poolConnection.query("INSERT into flea_postmeta values ('',?)",[postId], function (err, rows, fields) {
+                if(err) {
+                    data.statusmsg = 'error writing to flea_posts';
+                }
+                else {
+                    data.statusmsg = 'wrote to flea_posts successfully';
+                }
+            });
+            poolConnection.query("INSERT into flea_term_relationships values ('',?)",[postId], function (err, rows, fields) {
+                if(err) {
+                    data.statusmsg = 'error writing to flea_posts';
+                }
+                else {
+                    data.statusmsg = 'wrote to flea_posts successfully';
+                }
+            });*/
+                
 
-            /*         poolConnection.query("INSERT into flea_posts values ('',?)",[postId], function (err, rows, fields) {
-             if(err) {
-             data.statusmsg = 'error writing to flea_posts';
-             }
-             else {
-             data.statusmsg = 'wrote to flea_posts successfully';
-             }
-             });
-             poolConnection.query("INSERT into flea_postmeta values ('',?)",[postId], function (err, rows, fields) {
-             if(err) {
-             data.statusmsg = 'error writing to flea_posts';
-             }
-             else {
-             data.statusmsg = 'wrote to flea_posts successfully';
-             }
-             });
-             poolConnection.query("INSERT into flea_term_relationships values ('',?)",[postId], function (err, rows, fields) {
-             if(err) {
-             data.statusmsg = 'error writing to flea_posts';
-             }
-             else {
-             data.statusmsg = 'wrote to flea_posts successfully';
-             }
-             });*/
 
+            //data.error = 0;
+            //data.statusmsg = "Successully made the trip to fleasql!";
         });
-
-        /* connection.query("insert into book values('',?,?,?)",[Bookname, Authorname, Price], function (err, rows, fields) {
-         if(err) {
-         data.Books = "Error adding data";
-         }
-         else {
-         data.error = 0;
-         data.Books = "Book added successfully.";
-         }
-         res.json(data);
-         });*/
-        //res.json(listingData);
     }
     else {
-        /*data.Books = 'Please provide all required data!  Bookname, Authorname and Price.';
-         res.json(data);*/
-        res.send('did not get listing data!');
+        data.statusmsg = "fleasql layer doesn't have the listing data";
+        res.json(data);
     }
 });
 
+// error handler
+router.use(function(err, req, res, next) {
+    if (res.headersSent) {
+        return next(err);
+    }
+    console.error('Error Name:' + err.name + '\nError message: ' + err.message);
+    res.status(500);
+    res.send('Database Service Layer had a problem.');
+});
 /*router.post('/', function (req, res, next) {
     
     if(err) {

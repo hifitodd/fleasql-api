@@ -16,6 +16,7 @@ var connection = mysql.createConnection({
 // load in the submitListing router
 var submitListing = require('./submitListing');
 
+
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 app.set('trust proxy', 'loopback');
@@ -371,10 +372,6 @@ app.get('/myFeedback', function(req, res, next) {
     });
 });*/
 
-/**
- * POST Example
- */
-
 app.post('/bookpost', function(req, res) {
     // setup vars first
 
@@ -484,5 +481,5 @@ app.use(function(err, req, res, next) {
 
 
 app.listen(3000, function () {
-    console.log('Flea MySql Web Service layer is up on port 3000.   ');
+    console.log('Flea MySql Web Service layer is up on port 3000.');
 });
